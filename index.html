@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Journal Cloud</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans">
+
+    <!-- Navigation -->
+    <nav class="bg-white border-b border-slate-200 sticky top-0 z-10">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <div class="bg-blue-600 p-2 rounded-lg">
+                    <i class="fas fa-chart-line text-white"></i>
+                </div>
+                <h1 class="text-xl font-bold tracking-tight">TradeJournal</h1>
+            </div>
+            <div class="flex gap-4">
+                <button onclick="showView('journal')" id="btn-journal" class="flex items-center gap-2 px-3 py-2 rounded-md bg-blue-50 text-blue-700 font-medium transition-all">
+                    <i class="fas fa-plus-circle"></i> <span class="hidden sm:inline">Neuer Trade</span>
+                </button>
+                <button onclick="showView('history')" id="btn-history" class="flex items-center gap-2 px-3 py-2 rounded-md text-slate-600 hover:bg-slate-100 transition-all">
+                    <i class="fas fa-history"></i> <span class="hidden sm:inline">Historie</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-4xl mx-auto p-4 py-8">
+        <!-- Lade-Indikator -->
+        <div id="loading" class="flex flex-col items-center justify-center h-64 gap-4">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <p class="text-slate-500 text-sm">Verbindung zur Cloud wird hergestellt...</p>
+        </div>
+
+        <!-- Ansicht: Neuer Trade -->
+        <div id="view-journal" class="hidden">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 md:p-8">
+                <h2 class="text-2xl font-bold mb-6 flex items-center gap-2 text-slate-800">
+                    <i class="fas fa-edit text-blue-600"></i> Trade erfassen
+                </h2>
+                <form id="trade-form" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-2">
+                        <label class="text-sm font-semibold text-slate-700">Symbol</label>
+                        <input required id="symbol" placeholder="z.B. BTC/USDT" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-sm font-semibold text-slate-700">Entry Preis</label>
+                        <input required type="number" step="any" id="entry" placeholder="0.00" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-sm font-semibold text-slate-700">SL / TP Level</label>
+                        <div class="flex gap-2">
+                            <input id="sl" placeholder="Stop Loss" class="w-1/2 p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-red-500 outline-none transition-all">
+                            <input id="tp" placeholder="Take Profit" class="w-1/2 p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none transition-all">
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-sm font-semibold text-slate-700">Emotion</label>
+                        <select id="emotion" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                            <option>Ruhig</option>
+                            <option>Neutral</option>
+                            <option>Ängstlich</option>
+                            <option>Gierig</option>
+                            <option>Frustriert</option>
+                        </select>
+                    </div>
+                    <div class="space-y-2 md:col-span-2">
+                        <label class="text-sm font-semibold text-slate-700">Kriterien</label>
+                        <textarea id="criteria" rows="3" placeholder="Warum dieser Einstieg?" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"></textarea>
+                    </div>
+                    <div class="space-y-2 md:col-span-2">
+                        <label class="text-sm font-semibold text-slate-700">Fehler / Anmerkungen</label>
+                        <textarea id="mistakes" rows="2" placeholder="Was lief falsch?" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"></textarea>
+                    </div>
+                    <button type="submit" id="submit-btn" class="md:col-span-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-lg shadow-lg shadow-blue-100 transition-all flex justify-center items-center gap-2">
+                        <i class="fas fa-save"></i> Trade Speichern
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Ansicht: Historie -->
+        <div id="view-history" class="hidden">
+            <h2 class="text-2xl font-bold mb-6 flex items-center gap-2 text-slate-800">
+                <i class="fas fa-history text-blue-600"></i> Deine Historie
+            </h2>
+            <div id="trades-list" class="grid gap-4">
+                <!-- Trades werden hier eingefügt -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, doc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDa_bGb6pyXsFnPUQKuahVtZLY_wca0JYU",
+            authDomain: "journal-2484c.firebaseapp.com",
+            projectId: "journal-2484c",
+            storageBucket: "journal-2484c.firebasestorage.app",
+            messagingSenderId: "1019515290075",
+            appId: "1:1019515290075:web:e8f0e2be248be4ec29a7fe",
+            measurementId: "G-MZQHHZ450Q"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        let currentUser = null;
+
+        async function startAuth() {
+            try {
+                await signInAnonymously(auth);
+            } catch (error) {
+                console.error("Auth error:", error);
+                alert("Authentifizierungsfehler.");
+            }
+        }
+
+        startAuth();
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('loading').classList.add('hidden');
+                showView('journal');
+                loadTrades();
+            }
+        });
+
+        window.showView = (view) => {
+            document.getElementById('view-journal').classList.toggle('hidden', view !== 'journal');
+            document.getElementById('view-history').classList.toggle('hidden', view !== 'history');
+            
+            const activeClass = 'bg-blue-50 text-blue-700 font-medium';
+            const inactiveClass = 'text-slate-600 hover:bg-slate-100';
+            
+            document.getElementById('btn-journal').className = `flex items-center gap-2 px-3 py-2 rounded-md transition-all ${view === 'journal' ? activeClass : inactiveClass}`;
+            document.getElementById('btn-history').className = `flex items-center gap-2 px-3 py-2 rounded-md transition-all ${view === 'history' ? activeClass : inactiveClass}`;
+        };
+
+        document.getElementById('trade-form').onsubmit = async (e) => {
+            e.preventDefault();
+            if (!currentUser) return;
+
+            const btn = document.getElementById('submit-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Speichert...';
+
+            const tradeData = {
+                symbol: document.getElementById('symbol').value,
+                entry: document.getElementById('entry').value,
+                sl: document.getElementById('sl').value,
+                tp: document.getElementById('tp').value,
+                emotion: document.getElementById('emotion').value,
+                criteria: document.getElementById('criteria').value,
+                mistakes: document.getElementById('mistakes').value,
+                date: new Date().toLocaleDateString('de-DE'),
+                createdAt: serverTimestamp()
+            };
+
+            try {
+                // Konsequenter Pfad
+                const colRef = collection(db, 'trades_data', currentUser.uid, 'user_trades');
+                await addDoc(colRef, tradeData);
+                document.getElementById('trade-form').reset();
+                showView('history');
+            } catch (err) {
+                console.error("Speicherfehler:", err);
+                alert("Fehler beim Speichern. Prüfe deine Firestore Rules!");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save"></i> Trade Speichern';
+            }
+        };
+
+        function loadTrades() {
+            if (!currentUser) return;
+            
+            const colRef = collection(db, 'trades_data', currentUser.uid, 'user_trades');
+            
+            onSnapshot(colRef, (snapshot) => {
+                const list = document.getElementById('trades-list');
+                list.innerHTML = '';
+                
+                let docs = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
+                docs.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+                if(docs.length === 0) {
+                    list.innerHTML = `<div class="text-center py-16 bg-white rounded-xl border border-dashed border-slate-300 text-slate-500">Noch keine Trades vorhanden.</div>`;
+                    return;
+                }
+
+                docs.forEach(trade => {
+                    const div = document.createElement('div');
+                    div.className = 'bg-white p-5 rounded-xl border border-slate-200 shadow-sm';
+                    div.innerHTML = `
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <span class="font-black text-xl text-blue-800">${trade.symbol}</span>
+                                <span class="text-[10px] bg-slate-100 px-2 py-1 rounded text-slate-500 ml-2 font-bold uppercase">${trade.date}</span>
+                            </div>
+                            <!-- Hier rufen wir die globale Funktion auf -->
+                            <button onclick="window.confirmDelete('${trade.id}')" class="text-slate-300 hover:text-red-500 transition-colors p-2">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 text-sm mb-4">
+                            <div class="bg-red-50 p-2 rounded border border-red-100">
+                                <span class="text-red-600 block text-[10px] font-black uppercase mb-1">Stop Loss</span>
+                                <span class="font-mono text-slate-700 font-bold">${trade.sl || '-'}</span>
+                            </div>
+                            <div class="bg-green-50 p-2 rounded border border-green-100">
+                                <span class="text-green-600 block text-[10px] font-black uppercase mb-1">Take Profit</span>
+                                <span class="font-mono text-slate-700 font-bold">${trade.tp || '-'}</span>
+                            </div>
+                        </div>
+                        <div class="space-y-2 text-sm">
+                            <p><strong class="text-slate-400 uppercase text-[10px]">Entry:</strong> ${trade.entry}</p>
+                            <p class="text-slate-700 italic border-l-2 border-blue-100 pl-3">${trade.criteria || ''}</p>
+                            <div class="flex gap-2 mt-2">
+                                <span class="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-bold uppercase">${trade.emotion}</span>
+                            </div>
+                        </div>
+                    `;
+                    list.appendChild(div);
+                });
+            });
+        }
+
+        // Globale Funktion zum Löschen
+        window.confirmDelete = async (id) => {
+            if(!currentUser) return;
+            if(!confirm("Diesen Trade wirklich löschen?")) return;
+
+            try {
+                // Referenz muss exakt zum Speicherort passen
+                const docRef = doc(db, 'trades_data', currentUser.uid, 'user_trades', id);
+                await deleteDoc(docRef);
+                // Kein expliziter Reload nötig, onSnapshot aktualisiert die Liste automatisch
+            } catch (err) {
+                console.error("Löschfehler:", err);
+                if (err.code === 'permission-denied') {
+                    alert("Löschen verweigert! Hast du in der Firebase Console die Schreibrechte (Rules) aktiviert?");
+                } else {
+                    alert("Fehler beim Löschen: " + err.message);
+                }
+            }
+        };
+    </script>
+</body>
+</html>
